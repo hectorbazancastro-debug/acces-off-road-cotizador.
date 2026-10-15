@@ -72,6 +72,85 @@ service cloud.firestore {
       allow read: if approved();
       allow create, update, delete: if admin();
     }
+
+    // Los QR incluyen un catálogo limitado, sin datos internos de inventario.
+    function isAnonymous() {
+      return request.auth != null &&
+        request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+    function kioskActive(token) {
+      return token is string &&
+        token.size() == 64 &&
+        exists(/databases/$(database)/documents/acces_kiosk_tokens/$(token)) &&
+        get(/databases/$(database)/documents/acces_kiosk_tokens/$(token)).data.active == true &&
+        request.time <
+          get(/databases/$(database)/documents/acces_kiosk_tokens/$(token)).data.createdAt + duration.value(1, 'h');
+    }
+    match /acces_kiosk_tokens/{token} {
+      allow get: if seller() || (isAnonymous() && resource.data.active == true &&
+        request.time < resource.data.createdAt + duration.value(1, 'h'));
+      allow list: if admin();
+      allow create: if seller() &&
+        token.size() == 64 &&
+        request.resource.data.keys().hasOnly(['createdAt','createdBy','active','catalog','taxPct']) &&
+        request.resource.data.keys().hasAll(['createdAt','createdBy','active','catalog','taxPct']) &&
+        request.resource.data.createdBy == request.auth.uid &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.active == true &&
+        request.resource.data.catalog is list &&
+        request.resource.data.catalog.size() > 0 &&
+        request.resource.data.catalog.size() <= 250 &&
+        request.resource.data.taxPct is number &&
+        request.resource.data.taxPct >= 0 &&
+        request.resource.data.taxPct <= 100;
+      allow update: if admin() || (seller() &&
+        resource.data.createdBy == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active']) &&
+        request.resource.data.active == false);
+      allow delete: if admin();
+    }
+    match /acces_kiosk_quotes/{quoteId} {
+      allow read: if seller();
+      allow create: if isAnonymous() &&
+        request.resource.data.keys().hasOnly([
+          'id','kioskToken','guestUid','createdAt','customer','phone','vehicle',
+          'lines','subtotal','taxPct','tax','total','status'
+        ]) &&
+        request.resource.data.keys().hasAll([
+          'id','kioskToken','guestUid','createdAt','customer','phone','vehicle',
+          'lines','subtotal','taxPct','tax','total','status'
+        ]) &&
+        request.resource.data.kioskToken is string &&
+        kioskActive(request.resource.data.kioskToken) &&
+        quoteId == request.resource.data.kioskToken + '-' + request.auth.uid &&
+        request.resource.data.guestUid == request.auth.uid &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.id is string &&
+        request.resource.data.id.size() <= 40 &&
+        request.resource.data.customer is string &&
+        request.resource.data.customer.size() >= 2 &&
+        request.resource.data.customer.size() <= 100 &&
+        request.resource.data.phone is string &&
+        request.resource.data.phone.size() <= 30 &&
+        request.resource.data.vehicle is string &&
+        request.resource.data.vehicle.size() <= 100 &&
+        request.resource.data.lines is list &&
+        request.resource.data.lines.size() > 0 &&
+        request.resource.data.lines.size() <= 25 &&
+        request.resource.data.subtotal is number &&
+        request.resource.data.subtotal >= 0 &&
+        request.resource.data.subtotal <= 10000000 &&
+        request.resource.data.taxPct ==
+          get(/databases/$(database)/documents/acces_kiosk_tokens/$(request.resource.data.kioskToken)).data.taxPct &&
+        request.resource.data.tax is number &&
+        request.resource.data.tax >= 0 &&
+        request.resource.data.total is number &&
+        request.resource.data.total >= 0 &&
+        request.resource.data.total <= 10000000 &&
+        request.resource.data.status == 'Pendiente de validar';
+      allow update, delete: if admin();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

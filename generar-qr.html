@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer"><meta name="theme-color" content="#15100d">
+<title>ACCES OFF-ROAD · Generar QR</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#110f0e;color:#faf7f2;font:15px/1.5 system-ui,Arial}
+header{padding:17px;background:#23180f;border-bottom:2px solid #e67722}
+header strong{font-size:23px}header em{font-style:normal;color:#f98929}
+main{max-width:850px;margin:auto;padding:16px}
+section{background:#241f1b;border:1px solid #5c4534;padding:18px;margin:15px 0;border-radius:13px}
+h2{font-size:19px;margin:0 0 8px}
+label{display:block;color:#ddc7b6;font-size:13px;margin:12px 0 5px}
+input{width:100%;padding:11px;border-radius:9px;border:1px solid #7d5d45;background:#14100e;color:white}
+button{background:#4b3425;border:1px solid #93694a;border-radius:9px;color:white;padding:11px 15px;margin:7px 5px 4px 0;font:inherit;cursor:pointer}
+.primary{background:#fa8124;border-color:#fa8124;color:#160c05;font-weight:800}
+button:disabled{opacity:.5}
+.muted{color:#bfae9e;font-size:13px}
+#status{padding:10px;border-left:4px solid #fa8124;background:#322115}
+#qr{display:inline-block;padding:13px;border-radius:8px;background:#fff}
+#qr img,#qr canvas{max-width:100%}
+a{color:#f9af7c;overflow-wrap:anywhere}
+.entry{padding:12px 0;border-bottom:1px solid #554334}
+.row{display:flex;gap:20px;flex-wrap:wrap;align-items:start}
+[hidden]{display:none!important}
+@media print{body *{visibility:hidden}#qrPrint,#qrPrint *{visibility:visible}#qrPrint{position:absolute;inset:0;padding:25px;background:white;color:black}}
+</style>
+</head>
+<body>
+<header><strong>ACCES <em>OFF-ROAD</em></strong><div class="muted">Acceso de personal autorizado</div></header>
+<main>
+<p id="status" role="status">Comprobando sesión…</p>
+<section id="loginPanel" hidden>
+<h2>Iniciar sesión de vendedor</h2>
+<label>Correo electrónico<input id="email" type="email" autocomplete="email"></label>
+<label>Contraseña<input id="password" type="password" autocomplete="current-password"></label>
+<button class="primary" id="signIn">Entrar</button>
+</section>
+<div id="privatePanel" hidden>
+<section>
+<h2>Acceso temporal para clientes</h2>
+<p>Genera un código QR para que el cliente cotice por su cuenta. Cada código vence una hora después de crearlo. El cliente no se registra y no puede consultar el inventario ni otros datos privados.</p>
+<button id="create" class="primary">Generar código QR de una hora</button>
+<button id="signOut">Cerrar sesión</button>
+<div id="qrPrint" hidden>
+<h2>ACCES OFF-ROAD · Cotiza aquí</h2>
+<div id="qr"></div>
+<p id="remaining"></p>
+<a id="clientLink" target="_blank" rel="noopener noreferrer"></a>
+</div>
+<div id="qrActions" hidden>
+<button id="copy">Copiar enlace</button><button id="revoke">Desactivar QR</button><button id="print">Imprimir QR</button>
+</div>
+</section>
+<section>
+<h2>Cotizaciones recibidas mediante QR</h2>
+<p class="muted">Todos los importes requieren validación por el vendedor.</p>
+<div id="inbox">Sin consultar.</div>
+</section>
+</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" referrerpolicy="no-referrer"></script>
+<script type="module" src="/generar-qr.js"></script>
+</body>
+</html>
