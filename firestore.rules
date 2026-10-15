@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // IMPORTANTE: cambiar este UID exclusivamente después de comprobar la
+    // identidad del administrador maestro. Hasta entonces no hay administrador.
+    function owner() {
+      return request.auth != null && request.auth.uid == 'l441Clb8JvSFc6sVtNUdRJJC2402';
+    }
+    function signedIn() { return request.auth != null; }
+    function myProfile() {
+      return get(/databases/$(database)/documents/acces_profiles/$(request.auth.uid)).data;
+    }
+    function approved() {
+      return signedIn() && (owner() ||
+        (exists(/databases/$(database)/documents/acces_profiles/$(request.auth.uid)) &&
+         myProfile().status == 'active'));
+    }
+    function admin() {
+      return owner() || (approved() && myProfile().role == 'admin');
+    }
+    function seller() {
+      return admin() || (approved() && myProfile().role == 'seller');
+    }
+    match /acces_profiles/{uid} {
+      allow get: if signedIn() && (uid == request.auth.uid || admin());
+      allow list: if admin();
+      allow create: if signedIn() && uid == request.auth.uid &&
+        request.resource.data.keys().hasOnly(['name','email','role','status','createdAt']) &&
+        request.resource.data.role == 'seller' &&
+        request.resource.data.status == 'pending' &&
+        request.resource.data.email == request.auth.token.email;
+      allow update: if owner() ||
+        (admin() && uid != request.auth.uid &&
+         resource.data.role == 'seller' &&
+         request.resource.data.role == 'seller' &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(['name','status']));
+      allow delete: if owner();
+    }
+    match /acces_catalog/{sku} {
+      allow read: if approved();
+      allow create, update, delete: if admin();
+    }
+    match /acces_clients/{id} {
+      allow read: if approved();
+      allow create: if seller() &&
+        request.resource.data.ownerUid == request.auth.uid;
+      allow update: if admin() ||
+        (seller() && resource.data.ownerUid == request.auth.uid &&
+         request.resource.data.ownerUid == resource.data.ownerUid);
+      allow delete: if admin() ||
+        (seller() && resource.data.ownerUid == request.auth.uid);
+    }
+    match /acces_vehicles/{id} {
+      allow read: if approved();
+      allow create, update, delete: if admin();
+    }
+    match /acces_quotes/{id} {
+      allow read: if admin() ||
+        (seller() && resource.data.ownerUid == request.auth.uid);
+      allow create: if seller() &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.id == id;
+      allow update: if admin() ||
+        (seller() && resource.data.ownerUid == request.auth.uid &&
+         request.resource.data.ownerUid == resource.data.ownerUid &&
+         request.resource.data.id == id);
+      allow delete: if admin() ||
+        (seller() && resource.data.ownerUid == request.auth.uid);
+    }
+    match /acces_settings/{id} {
+      allow read: if approved();
+      allow create, update, delete: if admin();
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
