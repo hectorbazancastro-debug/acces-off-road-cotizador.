@@ -194,7 +194,7 @@ async function sync(){
   if(!activeUser || !role || awaiting.size)throw new Error("La sesión y los datos aún no están disponibles");
   const target=clone(window.ACCES_UI.getState());
   const sectionsChanged=Object.keys(sections).filter(section=>{
-    if(section==="settings") return JSON.stringify(target.settings)!==JSON.stringify(current.settings[0]||{});
+    if(section==="settings") return isAdmin() && JSON.stringify(target.settings)!==JSON.stringify(current.settings[0]||{});
     return JSON.stringify(target[section])!==JSON.stringify(current[section]);
   });
   for(const section of sectionsChanged){
