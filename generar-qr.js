@@ -68,7 +68,9 @@ $("create").addEventListener("click",async()=>{
   const button=$("create");button.disabled=true;
   try{
     const catalog=await getDocs(collection(db,"acces_catalog"));
-    const products=catalog.docs.map(x=>publicProduct(x.data()))
+    const products=catalog.docs.map(x=>x.data())
+      .filter(x=>x.Activo!=="No")
+      .map(publicProduct)
       .filter(x=>x.SKU&&x["Descripción"]);
     if(!products.length)throw Error("El catálogo está vacío. Carga primero los productos de muestra desde el panel administrador.");
     if(products.length>250)throw Error("El catálogo tiene más de 250 productos. Hay que habilitar paginación antes de generar QR.");
