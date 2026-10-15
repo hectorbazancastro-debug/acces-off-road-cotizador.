@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#15100d">
+<meta name="referrer" content="no-referrer">
+<title>ACCES OFF-ROAD · Cotiza tú mismo</title>
+<style>
+:root{color-scheme:dark;--bg:#11100f;--card:#1e1b18;--line:#47372b;--orange:#fa8022;--muted:#bfb2a5}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f9f5f0;font:15px/1.5 system-ui,Segoe UI,Arial}
+header{background:#21160f;border-bottom:2px solid #ab5522;padding:17px 18px}header strong{font-size:21px;letter-spacing:1px}header em{font-style:normal;color:var(--orange)}header p{margin:3px 0;color:var(--muted);font-size:13px}
+main{max-width:960px;margin:auto;padding:15px}h2{font-size:20px;margin:12px 0}h3{font-size:16px;margin:0 0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin:13px 0}
+label{display:block;font-size:13px;color:#e6cdb9;margin:10px 0 4px}
+input{width:100%;background:#100e0c;color:#fff;border:1px solid #76614e;border-radius:9px;padding:12px;font:inherit}
+input:focus{outline:2px solid var(--orange)}button{background:#3d3026;color:#fff;border:1px solid #8d6a4c;border-radius:9px;padding:10px 12px;font:inherit;cursor:pointer}
+button.primary{background:var(--orange);border-color:var(--orange);color:#170e08;font-weight:800}button:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:12px;align-items:center;justify-content:space-between}.row>*{min-width:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.item{border:1px solid #574130;border-radius:12px;padding:13px;background:#2a231d;display:flex;flex-direction:column;gap:6px}
+.item .sku{font-size:11px;color:#ffc09b}.item .name{font-weight:700}.muted{font-size:12px;color:var(--muted)}.price{font-weight:800;color:var(--orange)}
+.cart-line{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;border-bottom:1px solid var(--line);padding:10px 0}
+.cart-line input{width:64px;padding:8px}.cart-line .remove{padding:5px 9px}
+.notice{border:1px solid #98591c;border-radius:10px;background:#34220f;padding:12px;margin:10px 0}
+footer{color:var(--muted);font-size:12px;text-align:center;padding:20px}
+[hidden]{display:none!important}@media(max-width:550px){.grid{grid-template-columns:1fr 1fr}.card{padding:12px}.item{padding:10px}.cart-line{grid-template-columns:1fr auto}.cart-line .remove{grid-column:2}}
+</style>
+</head>
+<body>
+<header><strong>ACCES <em>OFF-ROAD</em></strong><p>Autocotización para clientes en tienda · No requiere registro</p></header>
+<main>
+<section id="loading" class="notice">Verificando el acceso temporal…</section>
+<section id="blocked" class="card" hidden><h2>Acceso no disponible</h2><p id="blockedMessage">Este código QR ya no es válido. Solicita uno nuevo en la tienda.</p></section>
+<div id="app" hidden>
+ <div class="notice row"><div><b>Acceso de tienda habilitado</b><div class="muted">Se desactiva una hora después de su emisión</div></div><b id="clock" aria-live="off">--:--</b></div>
+ <section class="card"><h2>1 · Selecciona tus productos</h2><label for="search">Buscar por descripción, marca o número de parte</label><input id="search" type="search" placeholder="Ej. amortiguador, LED, Jeep…"><p class="muted">Precios en USD. La existencia y los datos internos no se muestran.</p><div id="products" class="grid"></div></section>
+ <section class="card"><h2>2 · Tu cotización</h2><div id="cart" aria-live="polite"><p class="muted">Selecciona un producto para comenzar.</p></div><div class="row"><span>Subtotal</span><b id="subtotal">$0.00</b></div><div class="row"><span id="taxLabel">IVA (16%)</span><b id="tax">$0.00</b></div><div class="row" style="font-size:20px;border-top:1px solid #554032;margin-top:10px;padding-top:10px"><strong>Total estimado</strong><strong class="price" id="total">$0.00</strong></div></section>
+ <section class="card"><h2>3 · Envía tu solicitud</h2><label for="customer">Tu nombre *</label><input id="customer" maxlength="100" autocomplete="name" required placeholder="Nombre completo"><label for="phone">Teléfono (opcional)</label><input id="phone" type="tel" maxlength="30" autocomplete="tel" placeholder="Teléfono de contacto"><label for="vehicle">Vehículo (opcional)</label><input id="vehicle" maxlength="100" placeholder="Ej. Jeep Wrangler 2023"><p class="muted">La cotización se enviará al equipo de ACCES OFF-ROAD para revisar precios, impuestos y disponibilidad. No es una compra ni una reservación de inventario.</p><button class="primary" id="submit" type="button">Enviar mi cotización</button><div id="result" class="notice" role="status" hidden></div></section>
+</div>
+</main><footer>ACCES OFF-ROAD · Precios y disponibilidad sujetos a confirmación</footer>
+<script type="module" src="/cliente.js"></script>
+</body>
+</html>
