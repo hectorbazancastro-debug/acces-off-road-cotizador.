@@ -17,6 +17,45 @@ const token=new URL(location.href).searchParams.get("token")||"";
 const money=n=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n||0);
 const esc=s=>String(s??"").replace(/[&<>"']/g,x=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[x]));
 let expiresAt=0,products=[],cart=new Map(),taxPct=16,submitted=false;
+let activeSection="all";
+const SECTIONS=[
+  ["all","Todas las partes"],["defensas","Defensas"],["luces","Luces y faros"],
+  ["suspension","Suspensión"],["amortiguadores","Amortiguadores"],["direccion","Dirección"],
+  ["rines","Rines"],["llantas","Llantas"],["winch","Winch"],
+  ["recuperacion","Recuperación"],["tren","Diferenciales y ejes"],
+  ["proteccion","Protección lateral"],["rack","Racks y carga"],
+  ["electrico","Eléctrico"],["otros","Otros accesorios"]
+];
+const normalize=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+function productSections(p){
+  const category=normalize(p.Categoría),zone=normalize(p.Zona),description=normalize(p["Descripción"]);
+  const sections=new Set();
+  if(/defensa|bumper/.test(description)||(/defensa/.test(zone)&&!/winch|malacate/.test(description)))sections.add("defensas");
+  if(/iluminacion/.test(category)||/faros|luces/.test(zone)||/led|faro|luz|reflector/.test(description))sections.add("luces");
+  if(/suspension|amortiguadores/.test(category+" "+zone))sections.add("suspension");
+  if(/amortiguador|shock/.test(zone+" "+description))sections.add("amortiguadores");
+  if(/direccion/.test(zone+" "+description))sections.add("direccion");
+  if(/rines/.test(zone)||/\brin\b/.test(description))sections.add("rines");
+  if(/llantas/.test(zone)||/\bllanta\b/.test(description))sections.add("llantas");
+  if(/winch|malacate/.test(description))sections.add("winch");
+  if(/recuperacion/.test(category+" "+zone))sections.add("recuperacion");
+  if(/diferencial|tren motriz|ruedas/.test(category+" "+zone))sections.add("tren");
+  if(/proteccion lateral/.test(zone)||/rock slider|estribo/.test(description))sections.add("proteccion");
+  if(/rack|equipamiento/.test(category+" "+zone))sections.add("rack");
+  if(/electrico/.test(category+" "+zone))sections.add("electrico");
+  if(!sections.size)sections.add("otros");
+  return sections;
+}
+function drawSections(){
+  const rows=allowedProducts();
+  const options=SECTIONS.map(([id,label])=>({
+    id,label,count:id==="all"?rows.length:rows.filter(p=>productSections(p).has(id)).length
+  })).filter(x=>x.id==="all"||x.count>0);
+  $("categories").innerHTML=options.map(x=>
+    '<button type="button" data-section="'+x.id+'" aria-pressed="'+(activeSection===x.id)+'" class="'+(activeSection===x.id?'selected':'')+'"><span>'+esc(x.label)+'</span><span class="qty">'+x.count+'</span></button>'
+  ).join("");
+  $("sectionHeading").textContent=SECTIONS.find(x=>x[0]===activeSection)?.[1]||"Todos los productos";
+}
 const round=n=>Math.round(n*100)/100;
 function expired(){return !expiresAt||Date.now()>=expiresAt;}
 function block(reason){
@@ -31,7 +70,11 @@ function tick(){
 function allowedProducts(){return products.filter(p=>p.Activo!=="No"&&Number(p["Precio USD"])>=0);}
 function drawProducts(){
   const q=$("search").value.trim().toLocaleLowerCase("es");
-  const rows=allowedProducts().filter(p=>[p.SKU,p.Marca,p["Descripción"],p["Aplicación"],p.Categoría,p.Zona].some(v=>String(v||"").toLocaleLowerCase("es").includes(q))).slice(0,100);
+  const rows=allowedProducts().filter(p=>
+    (activeSection==="all"||productSections(p).has(activeSection)) &&
+    (!q||[p.SKU,p.Marca,p["Descripción"],p["Aplicación"],p.Categoría,p.Zona].some(v=>String(v||"").toLocaleLowerCase("es").includes(q)))
+  );
+  $("productsCount").textContent=rows.length+" producto(s) en esta selección";
   $("products").innerHTML=rows.map(p=>'<div class="item"><div class="sku">'+esc(p.SKU)+' · '+esc(p.Marca)+'</div><div class="name">'+esc(p["Descripción"])+'</div><div class="muted">'+esc(p["Aplicación"]||"")+'</div><div class="row"><b class="price">'+money(Number(p["Precio USD"]))+'</b><button class="primary add" data-sku="'+esc(p.SKU)+'">Agregar</button></div></div>').join("")||'<p class="muted">No se encontraron productos. Solicita ayuda en el mostrador.</p>';
 }
 function totals(){
@@ -47,6 +90,17 @@ function drawCart(){
   $("tax").textContent=money(t.tax);$("total").textContent=money(t.total);
 }
 $("search").addEventListener("input",drawProducts);
+$("categories").addEventListener("click",event=>{
+  const button=event.target.closest("button[data-section]");
+  if(!button||expired())return;
+  activeSection=button.dataset.section;
+  $("search").value="";
+  drawSections();
+  drawProducts();
+});
+$("clearFilters").addEventListener("click",()=>{
+  activeSection="all";$("search").value="";drawSections();drawProducts();
+});
 $("products").addEventListener("click",event=>{
   const sku=event.target.closest("[data-sku]")?.dataset.sku;
   if(!sku||expired()||submitted)return;
@@ -104,7 +158,7 @@ async function init(){
     const v=Number(snap.data().taxPct);
     if(Number.isFinite(v)&&v>=0&&v<=100)taxPct=v;
     $("loading").hidden=true;$("app").hidden=false;
-    drawProducts();drawCart();tick();setInterval(tick,1000);
+    drawSections();drawProducts();drawCart();tick();setInterval(tick,1000);
   }catch(error){block("No se pudo validar el QR o cargar el catálogo. Pide al vendedor que genere otro acceso.");}
 }
 init();
