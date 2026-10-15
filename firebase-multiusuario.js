@@ -13,7 +13,7 @@ const firebaseConfig = {
 };
 // Sustituir solo cuando el usuario confirme el UID del administrador principal.
 // Nunca conceder privilegios de administrador al primer registro público.
-const OWNER_UID = "REEMPLAZAR_UID_MAESTRO";
+const OWNER_UID = "l441Clb8JvSFc6sVtNUdRJJC2402";
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
