@@ -97,7 +97,7 @@ function renderUsers(items){
 async function manageUser(uid,status){
   if(!isAdmin())throw new Error("Requiere administrador");
   if(uid===activeUser.uid)throw new Error("No puedes modificar tu propia cuenta");
-  await updateDoc(cloudRef("profiles",uid),{status});
+  await updateDoc(doc(db,"acces_profiles",uid),{status});
 }
 async function manageRole(uid, targetRole){
   if(!isOwner())throw new Error("Solo el administrador maestro puede cambiar administradores");
@@ -127,11 +127,12 @@ async function loadProfile(user){
     snap=await getDoc(profileRef);
     if(!snap.exists()){
       await setDoc(profileRef,{
-        name:user.displayName || user.email.split("@")[0],
+        name:sessionStorage.getItem("acces_registration_name") || user.displayName || user.email.split("@")[0],
         email:user.email,
         role:"seller", status:"pending", createdAt:new Date().toISOString()
       });
       snap=await getDoc(profileRef);
+      sessionStorage.removeItem("acces_registration_name");
     }
   }catch(err){
     notice("Falta publicar las reglas seguras de Firestore o no hay conexión: "+err.message);
