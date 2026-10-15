@@ -2,6 +2,11 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#12100e">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ACCES OFF-ROAD">
 <title>ACCES OFF-ROAD · Cotizador</title>
 
 <style>
@@ -48,6 +53,7 @@ body.seller-mode #clientBody td button.danger[disabled]{display:none!important}
         <button id="accesLogoutButton">Cerrar sesión</button>
       </div>
     </div>
+    <button type="button" data-install-app hidden>Instalar aplicación</button>
     <div id="accesAuthMsg" role="status" aria-live="polite">Conectando con Firebase...</div>
     <small>Servicio gratuito Spark · No compartas tu contraseña · Proyecto independiente de 7K</small>
   </div>
@@ -57,7 +63,7 @@ body.seller-mode #clientBody td button.danger[disabled]{display:none!important}
 <main class="container">
 <div class="notice" id="notice"><b>ACCES OFF-ROAD · Multiusuario.</b> Cuentas y datos en Firebase. Catálogo con precios ficticios de muestra. No hay conexión a precios de proveedores. La seguridad se aplica mediante las reglas de Firestore.</div>
 <div class="welcome"><div><span class="eyebrow">PANEL COMERCIAL</span><h2 id="pageName">Cotizador</h2><p id="pageDesc">Prepara una cotización completa con el catálogo de muestra.</p></div><div class="toolbar"><button class="light" onclick="backupData()">⇩ Exportar respaldo</button><button class="outline" onclick="openHelp()">? Ayuda</button></div></div>
-<div class="toolbar" style="margin:12px 0"><button id="accesSeedBtn" class="light" hidden>Cargar los 42 productos de muestra a Firebase</button></div>
+<div class="toolbar" style="margin:12px 0"><button type="button" data-install-app hidden>Instalar aplicación</button><button id="accesSeedBtn" class="light" hidden>Cargar los 42 productos de muestra a Firebase</button></div>
 <nav class="tabs" id="tabs" aria-label="Secciones"><button class="on" data-p="quote">Cotizador</button><button data-p="history">Historial</button><button data-p="clients">Clientes</button><button data-p="vehicles">Vehículos</button><button data-p="catalog">Catálogo</button><button data-p="reports">Reportes</button><button data-p="users">Usuarios</button><button data-p="settings">Ajustes</button></nav>
 <section id="quote" class="panel on">
 <div class="layout2"><article class="card"><div class="headrow"><h3>01 · Cliente y vehículo</h3><button onclick="resetQuote()" class="small outline">Nueva / Limpiar</button></div><div class="form2"><label>Cliente<select id="qClient" onchange="applyClientDiscount()"></select></label><label>Vehículo<input id="qVehicle" list="vehicleOptions" placeholder="Ej. Jeep Wrangler JL 2023"><datalist id="vehicleOptions"></datalist></label></div><div class="form3"><label>Nombre libre del cliente<input id="qClientName" placeholder="O escribe un nombre nuevo"></label><label>Folio <input id="qFolio" readonly></label><label>Vendedor <input id="qSeller" value="Administrador (demo)"></label></div></article>
@@ -192,4 +198,5 @@ window.addEventListener('DOMContentLoaded',()=>{document.getElementById('accesEx
 
 </script>
 <script type="module" src="firebase-multiusuario.js"></script>
+<script src="/pwa.js" defer></script>
 </body></html>
