@@ -42,14 +42,7 @@ service cloud.firestore {
       allow create, update, delete: if admin();
     }
     match /acces_clients/{id} {
-      allow read: if approved();
-      allow create: if seller() &&
-        request.resource.data.ownerUid == request.auth.uid;
-      allow update: if admin() ||
-        (seller() && resource.data.ownerUid == request.auth.uid &&
-         request.resource.data.ownerUid == resource.data.ownerUid);
-      allow delete: if admin() ||
-        (seller() && resource.data.ownerUid == request.auth.uid);
+      allow read, write: if admin();
     }
     match /acces_vehicles/{id} {
       allow read: if approved();
@@ -71,6 +64,24 @@ service cloud.firestore {
     match /acces_settings/{id} {
       allow read: if approved();
       allow create, update, delete: if admin();
+    }
+    match /acces_guest_sessions/{token} {
+      // El reloj del servidor determina la vigencia, no el del teléfono.
+      allow get: if token.matches('[a-f0-9]{48}') && resource.data.active == true &&
+        request.time < resource.data.createdAt + duration.value(1, 'h');
+      allow list: if false;
+      allow create: if seller() && token.matches('[a-f0-9]{48}') &&
+        request.resource.data.keys().hasOnly(['ownerUid','createdAt','active','business','tax','products']) &&
+        request.resource.data.ownerUid == request.auth.uid &&
+        request.resource.data.createdAt == request.time &&
+        request.resource.data.active == true &&
+        request.resource.data.business is string && request.resource.data.business.size() <= 200 &&
+        request.resource.data.tax is number && request.resource.data.tax >= 0 && request.resource.data.tax <= 100 &&
+        request.resource.data.products is list && request.resource.data.products.size() > 0 && request.resource.data.products.size() <= 500;
+      allow update: if (admin() || (seller() && resource.data.ownerUid == request.auth.uid)) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active']) &&
+        request.resource.data.active == false;
+      allow delete: if admin();
     }
     match /{document=**} {
       allow read, write: if false;

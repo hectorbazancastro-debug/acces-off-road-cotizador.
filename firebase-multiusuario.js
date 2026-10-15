@@ -1,16 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, where, onSnapshot, writeBatch } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, where, onSnapshot, writeBatch, serverTimestamp, getDocFromServer } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCxlX4wWXRkyacBlbwCz0FepRG4li34pac",
-  authDomain: "acces-off-road.firebaseapp.com",
-  projectId: "acces-off-road",
-  storageBucket: "acces-off-road.firebasestorage.app",
-  messagingSenderId: "197389972400",
-  appId: "1:197389972400:web:6504f900672c2b2d8ddc75",
-  measurementId: "G-F7D22RFB0T"
-};
+import { firebaseConfig } from "./firebase-config.js";
 // Sustituir solo cuando el usuario confirme el UID del administrador principal.
 // Nunca conceder privilegios de administrador al primer registro público.
 const OWNER_UID = "l441Clb8JvSFc6sVtNUdRJJC2402";
@@ -50,6 +42,13 @@ const cloudRef = (section, key) => doc(db, sections[section], idFor(key));
 const clone = v => structuredClone(v);
 
 function closeSubscriptions(){
+  clearInterval(qrTimer); currentGuestRef=null;
+  document.getElementById("guestQrPanel").hidden=true;
+  document.getElementById("guestQrImage").replaceChildren();
+  document.getElementById("guestQrLink").removeAttribute("href");
+  document.getElementById("guestQrLink").textContent="";
+  document.getElementById("guestQrDownload").removeAttribute("href");
+  qrStatus.textContent="";
   unsubscribers.forEach(fn => { try{fn();}catch{} });
   unsubscribers=[];
   serverReady.clear();
@@ -74,7 +73,7 @@ function roleUI(){
   document.body.classList.toggle("seller-mode", !isAdmin());
   document.getElementById("accesSeedBtn").hidden = !isAdmin();
   document.getElementById("accesUserAdmin").hidden = !isAdmin();
-  document.querySelectorAll('[data-p="users"],[data-p="vehicles"],[data-p="settings"]').forEach(b=>b.hidden = !isAdmin());
+  document.querySelectorAll('[data-p="users"],[data-p="vehicles"],[data-p="settings"],[data-p="clients"],[data-p="reports"],[data-p="history"],[data-admin-only]').forEach(b=>b.hidden = !isAdmin());
   document.getElementById("qSeller").readOnly = !isAdmin();
   if(profile?.name)document.getElementById("qSeller").value = profile.name;
   if(typeof window.ACCES_UI !== "undefined")window.ACCES_UI.setRole(role,activeUser?.uid,profile?.name||"");
@@ -151,7 +150,8 @@ async function loadProfile(user){
 }
 
 function subscribeData(user){
-  const entries=Object.keys(sections);
+  const entries=Object.keys(sections).filter(section=>isAdmin() || section!=="clients");
+  current={catalog:[],clients:[],vehicles:[],quotes:[],settings:[]};
   awaiting=new Set(entries);
   const completed=()=>{if(awaiting.size===0){document.body.classList.add("cloud-ready");gate.hidden=true;window.ACCES_UI.ready();}};
   for(const section of entries){
@@ -198,7 +198,7 @@ async function sync(){
     return JSON.stringify(target[section])!==JSON.stringify(current[section]);
   });
   for(const section of sectionsChanged){
-    if(["catalog","vehicles","settings"].includes(section) && !isAdmin())
+    if(["catalog","vehicles","settings","clients"].includes(section) && !isAdmin())
       throw new Error("Solo un administrador puede modificar "+section);
     busyCollections.add(section);
     const desired=section==="settings"?[target.settings]:target[section];
@@ -286,4 +286,48 @@ onAuthStateChanged(auth,user=>{
     loginFields.hidden=false;sessionPanel.hidden=true;
     lockApp("Inicia sesión o registra una cuenta. Los vendedores necesitan aprobación.");
   }
+});
+let currentGuestRef = null;
+let qrTimer = null;
+const qrStatus = document.getElementById('guestQrStatus');
+document.getElementById('createGuestQr').addEventListener('click', async event => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  try {
+    if (!window.accesCloud.active) throw new Error('Inicia sesión primero.');
+    const state = window.ACCES_UI.getState();
+    const products = state.catalog.filter(p => String(p.Activo || 'Sí').toLowerCase() !== 'no').map(p => ({
+      sku: String(p.SKU), name: String(p.Descripción || ''), brand: String(p.Marca || ''),
+      category: String(p.Categoría || ''), fit: String(p.Aplicación || ''),
+      price: Math.max(0, Number(p['Precio USD']) || 0)
+    }));
+    if (!products.length) throw new Error('Carga productos en el catálogo antes de generar el QR.');
+    if (products.length > 500 || new TextEncoder().encode(JSON.stringify(products)).length > 750000)
+      throw new Error('El catálogo supera el límite de esta versión del acceso QR.');
+    const token = [...crypto.getRandomValues(new Uint8Array(24))].map(n=>n.toString(16).padStart(2,'0')).join('');
+    const ref = doc(db, 'acces_guest_sessions', token);
+    await setDoc(ref, {ownerUid: activeUser.uid, createdAt: serverTimestamp(), active: true,
+      business: String(state.settings.business || 'ACCES OFF-ROAD'), tax: Number(state.settings.tax) || 0,
+      products});
+    const snap = await getDocFromServer(ref);
+    const expires = snap.data().createdAt.toMillis() + 3600000;
+    currentGuestRef = ref;
+    const url = new URL('/cliente.html', location.origin); url.hash = token;
+    const qr = qrcode(0, 'M'); qr.addData(url.href); qr.make();
+    document.getElementById('guestQrImage').innerHTML = qr.createSvgTag({cellSize: 5, margin: 20, scalable: true});
+    const link = document.getElementById('guestQrLink'); link.href = url.href; link.textContent = url.href;
+    document.getElementById('guestQrDownload').href = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(qr.createSvgTag({cellSize: 8, margin: 32}));
+    document.getElementById('guestQrPanel').hidden = false;
+    document.getElementById('revokeGuestQr').disabled = false;
+    clearInterval(qrTimer);
+    const tick=()=>{const seconds=Math.max(0,Math.floor((expires-Date.now())/1000)); qrStatus.textContent=seconds?'Vence en '+Math.floor(seconds/60)+':'+String(seconds%60).padStart(2,'0')+' · Una hora desde su creación':'QR vencido. Genera uno nuevo.'; if(!seconds)clearInterval(qrTimer);};
+    tick(); qrTimer=setInterval(tick,1000);
+  } catch(error) { qrStatus.textContent = error.message; window.ACCES_UI.notice(error.message); }
+  finally {button.disabled=false;}
+});
+document.getElementById('revokeGuestQr').addEventListener('click', async event => {
+  if(!currentGuestRef) return;
+  event.currentTarget.disabled=true;
+  try { await updateDoc(currentGuestRef,{active:false}); clearInterval(qrTimer); qrStatus.textContent='QR desactivado.'; }
+  catch(error) {event.currentTarget.disabled=false;window.ACCES_UI.notice(error.message);}
 });
