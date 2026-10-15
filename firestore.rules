@@ -4,7 +4,7 @@ service cloud.firestore {
     // IMPORTANTE: cambiar este UID exclusivamente después de comprobar la
     // identidad del administrador maestro. Hasta entonces no hay administrador.
     function owner() {
-      return request.auth != null && request.auth.uid == 'REEMPLAZAR_UID_MAESTRO';
+      return request.auth != null && request.auth.uid == 'l441Clb8JvSFc6sVtNUdRJJC2402';
     }
     function signedIn() { return request.auth != null; }
     function myProfile() {
