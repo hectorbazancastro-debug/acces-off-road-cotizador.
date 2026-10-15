@@ -19,7 +19,7 @@ service cloud.firestore {
       return owner() || (approved() && myProfile().role == 'admin');
     }
     function seller() {
-      return approved() && (myProfile().role == 'seller' || admin());
+      return admin() || (approved() && myProfile().role == 'seller');
     }
     match /acces_profiles/{uid} {
       allow get: if signedIn() && (uid == request.auth.uid || admin());
@@ -45,10 +45,11 @@ service cloud.firestore {
       allow read: if approved();
       allow create: if seller() &&
         request.resource.data.ownerUid == request.auth.uid;
-      allow update, delete: if admin() ||
+      allow update: if admin() ||
         (seller() && resource.data.ownerUid == request.auth.uid &&
-         (request.method == 'delete' ||
-          request.resource.data.ownerUid == resource.data.ownerUid));
+         request.resource.data.ownerUid == resource.data.ownerUid);
+      allow delete: if admin() ||
+        (seller() && resource.data.ownerUid == request.auth.uid);
     }
     match /acces_vehicles/{id} {
       allow read: if approved();
