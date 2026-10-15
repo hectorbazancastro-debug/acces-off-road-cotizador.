@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-app.js";
-import { getFirestore, doc, getDoc, getDocs, collection, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-firestore.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/13.0.0/firebase-auth.js";
 
 const app = initializeApp({
   apiKey:"AIzaSyCxlX4wWXRkyacBlbwCz0FepRG4li34pac",
@@ -10,6 +11,7 @@ const app = initializeApp({
   appId:"1:197389972400:web:6504f900672c2b2d8ddc75"
 });
 const db=getFirestore(app);
+const auth=getAuth(app);
 const $=id=>document.getElementById(id);
 const token=new URL(location.href).searchParams.get("token")||"";
 const money=n=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD"}).format(n||0);
@@ -69,8 +71,10 @@ $("submit").addEventListener("click",async()=>{
   try{
     // La regla Firestore vuelve a comprobar el vencimiento al guardar.
     const ref="QR-"+crypto.randomUUID().replaceAll("-","").slice(0,16).toUpperCase();
-    await setDoc(doc(db,"acces_kiosk_quotes",ref),{
-      id:ref,kioskToken:token,createdAt:serverTimestamp(),customer:customer.slice(0,100),
+    const guestUid=auth.currentUser?.uid;
+    if(!guestUid)throw new Error("La sesión temporal no está disponible.");
+    await setDoc(doc(db,"acces_kiosk_quotes",token+"-"+guestUid),{
+      id:ref,kioskToken:token,guestUid,createdAt:serverTimestamp(),customer:customer.slice(0,100),
       phone:$("phone").value.trim().slice(0,30),vehicle:$("vehicle").value.trim().slice(0,100),
       lines:t.lines,subtotal:t.subtotal,taxPct:t.taxPct,tax:t.tax,total:t.total,
       status:"Pendiente de validar"
@@ -87,18 +91,18 @@ $("submit").addEventListener("click",async()=>{
 async function init(){
   if(!/^[a-f0-9]{64}$/i.test(token)){block("Este enlace no tiene un código de tienda válido.");return;}
   try{
+    // Inicio invisible de sesión anónima; el cliente no crea una cuenta ni contraseña.
+    if(!auth.currentUser || !auth.currentUser.isAnonymous)await signInAnonymously(auth);
     const snap=await getDoc(doc(db,"acces_kiosk_tokens",token));
     if(!snap.exists()||snap.data().active!==true)throw new Error("QR no disponible");
     const stamp=snap.data().createdAt?.toMillis();
     if(!stamp)throw new Error("Fecha no disponible");
     expiresAt=stamp+60*60*1000;
     if(expired()){block();return;}
-    const [catalog,settings]=await Promise.all([
-      getDocs(collection(db,"acces_public_catalog")),
-      getDoc(doc(db,"acces_public_settings","main"))
-    ]);
-    products=catalog.docs.map(d=>({...d.data(),SKU:d.data().SKU||decodeURIComponent(d.id)}));
-    if(settings.exists()){const v=Number(settings.data().taxPct);if(Number.isFinite(v)&&v>=0&&v<=100)taxPct=v;}
+    products=Array.isArray(snap.data().catalog)?snap.data().catalog:[];
+    if(!products.length)throw new Error("Sin productos publicados en este QR");
+    const v=Number(snap.data().taxPct);
+    if(Number.isFinite(v)&&v>=0&&v<=100)taxPct=v;
     $("loading").hidden=true;$("app").hidden=false;
     drawProducts();drawCart();tick();setInterval(tick,1000);
   }catch(error){block("No se pudo validar el QR o cargar el catálogo. Pide al vendedor que genere otro acceso.");}
