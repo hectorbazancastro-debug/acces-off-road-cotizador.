@@ -74,7 +74,7 @@ function roleUI(){
   document.body.classList.toggle("seller-mode", !isAdmin());
   document.getElementById("accesSeedBtn").hidden = !isAdmin();
   document.getElementById("accesUserAdmin").hidden = !isAdmin();
-  document.querySelectorAll('[data-p="users"],[data-p="vehicles"],[data-p="settings"]').forEach(b=>b.hidden = !isAdmin());
+  document.querySelectorAll('[data-p="history"],[data-p="clients"],[data-p="reports"],[data-p="users"],[data-p="vehicles"],[data-p="settings"]').forEach(b=>b.hidden = !isAdmin());
   document.getElementById("qSeller").readOnly = !isAdmin();
   if(profile?.name)document.getElementById("qSeller").value = profile.name;
   if(typeof window.ACCES_UI !== "undefined")window.ACCES_UI.setRole(role,activeUser?.uid,profile?.name||"");
